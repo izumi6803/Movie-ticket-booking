@@ -1,0 +1,50 @@
+package config
+
+import (
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
+
+type Config struct {
+	Port        string
+	DatabaseURL string
+	JWTSecret   string
+	VNPay       VNPayConfig
+}
+
+type VNPayConfig struct {
+	TmnCode     string
+	HashSecret  string
+	Endpoint    string
+	ReturnURL   string
+	Environment string
+}
+
+func Load() *Config {
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
+
+	return &Config{
+		Port:        getEnv("PORT", "3001"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/cinema?sslmode=disable"),
+		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		VNPay: VNPayConfig{
+			TmnCode:     getEnv("VNPAY_TMN_CODE", "TEST1234"),
+			HashSecret:  getEnv("VNPAY_HASH_SECRET", "TESTSECRET1234567890123456789012"),
+			Endpoint:    getEnv("VNPAY_ENDPOINT", "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
+			ReturnURL:   getEnv("VNPAY_RETURN_URL", "http://localhost:3001/api/payments/vnpay/return"),
+			Environment: getEnv("VNPAY_ENVIRONMENT", "sandbox"),
+		},
+	}
+}
+
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
