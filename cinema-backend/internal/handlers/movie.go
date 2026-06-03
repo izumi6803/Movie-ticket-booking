@@ -5,6 +5,8 @@ import (
 	"cinema-backend/internal/services"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -19,13 +21,73 @@ func NewMovieHandler(service *services.MovieService) *MovieHandler {
 }
 
 func (h *MovieHandler) Create(c *gin.Context) {
-	var movie models.Movie
-	if err := c.ShouldBindJSON(&movie); err != nil {
+	var request struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Duration    int    `json:"duration"`
+		Genre       string `json:"genre"`
+		Rating      string `json:"rating"`
+		PosterURL   string `json:"posterUrl"`
+		TrailerURL  string `json:"trailerUrl"`
+		ReleaseDate string `json:"releaseDate"`
+		Director    string `json:"director"`
+		Cast        string `json:"cast"`
+		Status      string `json:"status"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
 		return
 	}
 
-	if err := h.service.Create(&movie); err != nil {
+	// Parse genre from comma-separated string
+	var genres []string
+	if request.Genre != "" {
+		for _, g := range strings.Split(request.Genre, ",") {
+			g = strings.TrimSpace(g)
+			if g != "" {
+				genres = append(genres, g)
+			}
+		}
+	}
+
+	// Parse cast from comma-separated string
+	var casts []string
+	if request.Cast != "" {
+		for _, c := range strings.Split(request.Cast, ",") {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				casts = append(casts, c)
+			}
+		}
+	}
+
+	movie := &models.Movie{
+		Title:       request.Title,
+		Description: request.Description,
+		Duration:    request.Duration,
+		Genre:       genres,
+		Rating:      models.MovieRating(request.Rating),
+		Director:    request.Director,
+		Status:      models.MovieStatus(request.Status),
+		Cast:        casts,
+	}
+
+	if request.PosterURL != "" {
+		movie.PosterURL = &request.PosterURL
+	}
+	if request.TrailerURL != "" {
+		movie.TrailerURL = &request.TrailerURL
+	}
+	if request.ReleaseDate != "" {
+		// Parse release date
+		releaseDate, err := time.Parse("2006-01-02", request.ReleaseDate)
+		if err == nil {
+			movie.ReleaseDate = &releaseDate
+		}
+	}
+
+	if err := h.service.Create(movie); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
 		return
 	}
@@ -90,17 +152,77 @@ func (h *MovieHandler) GetByID(c *gin.Context) {
 
 func (h *MovieHandler) Update(c *gin.Context) {
 	id := c.Param("id")
-	var movie models.Movie
-	if err := c.ShouldBindJSON(&movie); err != nil {
+
+	var request struct {
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Duration    int    `json:"duration"`
+		Genre       string `json:"genre"`
+		Rating      string `json:"rating"`
+		PosterURL   string `json:"posterUrl"`
+		TrailerURL  string `json:"trailerUrl"`
+		ReleaseDate string `json:"releaseDate"`
+		Director    string `json:"director"`
+		Cast        string `json:"cast"`
+		Status      string `json:"status"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
 		return
+	}
+
+	// Parse genre from comma-separated string
+	var genres []string
+	if request.Genre != "" {
+		for _, g := range strings.Split(request.Genre, ",") {
+			g = strings.TrimSpace(g)
+			if g != "" {
+				genres = append(genres, g)
+			}
+		}
+	}
+
+	// Parse cast from comma-separated string
+	var casts []string
+	if request.Cast != "" {
+		for _, c := range strings.Split(request.Cast, ",") {
+			c = strings.TrimSpace(c)
+			if c != "" {
+				casts = append(casts, c)
+			}
+		}
+	}
+
+	movie := &models.Movie{
+		Title:       request.Title,
+		Description: request.Description,
+		Duration:    request.Duration,
+		Genre:       genres,
+		Rating:      models.MovieRating(request.Rating),
+		Director:    request.Director,
+		Status:      models.MovieStatus(request.Status),
+		Cast:        casts,
+	}
+
+	if request.PosterURL != "" {
+		movie.PosterURL = &request.PosterURL
+	}
+	if request.TrailerURL != "" {
+		movie.TrailerURL = &request.TrailerURL
+	}
+	if request.ReleaseDate != "" {
+		releaseDate, err := time.Parse("2006-01-02", request.ReleaseDate)
+		if err == nil {
+			movie.ReleaseDate = &releaseDate
+		}
 	}
 
 	// Set ID from URL
 	movieID, _ := uuid.Parse(id)
 	movie.ID = movieID
 
-	if err := h.service.Update(&movie); err != nil {
+	if err := h.service.Update(movie); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
 		return
 	}

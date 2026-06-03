@@ -36,10 +36,17 @@ func (h *PaymentHandler) CreateVNPayPayment(c *gin.Context) {
 	}
 
 	// Get user ID from context
-	userID, _ := c.Get("userID")
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "user not found in context"})
+		return
+	}
+
+	// Convert userID to string
+	userIDStr := fmt.Sprintf("%v", userID)
 
 	// Create payment record
-	payment, err := h.paymentService.CreatePayment(request.BookingID, userID.(string), request.Amount, models.PaymentMethodVNPay)
+	payment, err := h.paymentService.CreatePayment(request.BookingID, userIDStr, request.Amount, models.PaymentMethodVNPay)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
 		return

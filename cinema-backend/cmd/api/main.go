@@ -90,7 +90,7 @@ func main() {
 	bookingHandler := handlers.NewBookingHandler(bookingService)
 	paymentHandler := handlers.NewPaymentHandler(vnpayService, bookingService, paymentService)
 	seatLockHandler := handlers.NewSeatLockHandler(seatLockService)
-	uploadHandler := handlers.NewUploadHandler("http://localhost:" + cfg.Port)
+	uploadHandler := handlers.NewUploadHandler("http://localhost:" + cfg.Port + "/api")
 
 	// Set DB for dashboard handlers
 	handlers.SetDashboardDB(db)
@@ -152,6 +152,7 @@ func main() {
 
 		// Public image serving
 		api.GET("/uploads/:filename", uploadHandler.ServeImage)
+		api.HEAD("/uploads/:filename", uploadHandler.ServeImage)
 	}
 
 	// Protected routes
@@ -161,6 +162,8 @@ func main() {
 		// Auth
 		authorized.GET("/auth/me", authHandler.Me)
 		authorized.POST("/auth/logout", authHandler.Logout)
+		authorized.PUT("/auth/profile", authHandler.UpdateProfile)
+		authorized.POST("/auth/change-password", authHandler.ChangePassword)
 
 		// Admin only routes
 		admin := authorized.Group("/")

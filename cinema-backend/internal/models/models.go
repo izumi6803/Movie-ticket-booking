@@ -76,13 +76,13 @@ type Movie struct {
 	Title       string         `json:"title" gorm:"not null"`
 	Description string         `json:"description"`
 	Duration    int            `json:"duration" gorm:"not null"` // in minutes
-	Genre       string         `json:"genre,omitempty" gorm:"type:text[]"`
+	Genre       []string       `json:"genre,omitempty" gorm:"type:jsonb;serializer:json"`
 	Rating      MovieRating    `json:"rating,omitempty"`
 	PosterURL   *string        `json:"posterUrl,omitempty"`
 	TrailerURL  *string        `json:"trailerUrl,omitempty"`
 	ReleaseDate *time.Time     `json:"releaseDate,omitempty"`
 	Director    string         `json:"director,omitempty"`
-	Cast        string         `json:"cast,omitempty" gorm:"type:text[]"`
+	Cast        []string       `json:"cast,omitempty" gorm:"type:jsonb;serializer:json"`
 	Status      MovieStatus    `json:"status" gorm:"default:'coming_soon'"`
 	CreatedAt   time.Time      `json:"createdAt"`
 	UpdatedAt   time.Time      `json:"updatedAt"`

@@ -31,7 +31,7 @@ func (r *BookingRepository) FindAll(page, limit int) ([]models.Booking, int64, e
 		return nil, 0, err
 	}
 
-	err = r.db.Preload("User").Offset(offset).Limit(limit).
+	err = r.db.Preload("User").Preload("Showtime.Movie").Preload("Showtime.Screen.Theater").Preload("BookingSeats").Offset(offset).Limit(limit).
 		Order("created_at DESC").Find(&bookings).Error
 	return bookings, total, err
 }

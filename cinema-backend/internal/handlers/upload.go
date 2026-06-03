@@ -112,17 +112,47 @@ func (h *UploadHandler) DeleteImage(c *gin.Context) {
 func (h *UploadHandler) ServeImage(c *gin.Context) {
 	filename := c.Param("filename")
 	if filename == "" {
-		c.Status(http.StatusNotFound)
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "filename required"})
 		return
 	}
 
-	filepath := filepath.Join(UploadDir, filename)
+	// Get absolute path
+	absUploadDir, err := filepath.Abs(UploadDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "server error"})
+		return
+	}
+
+	filePath := filepath.Join(absUploadDir, filename)
 
 	// Security check
-	if !strings.HasPrefix(filepath, UploadDir) {
-		c.Status(http.StatusNotFound)
+	if !strings.HasPrefix(filePath, absUploadDir) {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "invalid filename"})
 		return
 	}
 
-	c.File(filepath)
+	// Check if file exists
+	fileInfo, err := os.Stat(filePath)
+	if os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "file not found"})
+		return
+	}
+
+	// Set content type based on extension
+	ext := strings.ToLower(filepath.Ext(filename))
+	contentType := "application/octet-stream"
+	switch ext {
+	case ".jpg", ".jpeg":
+		contentType = "image/jpeg"
+	case ".png":
+		contentType = "image/png"
+	case ".gif":
+		contentType = "image/gif"
+	case ".webp":
+		contentType = "image/webp"
+	}
+
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Length", fmt.Sprintf("%d", fileInfo.Size()))
+	c.File(filePath)
 }

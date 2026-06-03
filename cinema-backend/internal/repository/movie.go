@@ -63,44 +63,7 @@ func (r *MovieRepository) FindByID(id uuid.UUID) (*models.Movie, error) {
 }
 
 func (r *MovieRepository) Update(movie *models.Movie) error {
-	// Build updates map with only non-zero fields
-	updates := make(map[string]interface{})
-
-	if movie.Title != "" {
-		updates["title"] = movie.Title
-	}
-	if movie.Description != "" {
-		updates["description"] = movie.Description
-	}
-	if movie.Duration != 0 {
-		updates["duration"] = movie.Duration
-	}
-	if movie.Genre != "" {
-		updates["genre"] = movie.Genre
-	}
-	if movie.Rating != "" {
-		updates["rating"] = movie.Rating
-	}
-	if movie.PosterURL != nil {
-		updates["poster_url"] = *movie.PosterURL
-	}
-	if movie.TrailerURL != nil {
-		updates["trailer_url"] = *movie.TrailerURL
-	}
-	if movie.ReleaseDate != nil {
-		updates["release_date"] = *movie.ReleaseDate
-	}
-	if movie.Director != "" {
-		updates["director"] = movie.Director
-	}
-	if movie.Cast != "" {
-		updates["cast"] = movie.Cast
-	}
-	if movie.Status != "" {
-		updates["status"] = movie.Status
-	}
-
-	return r.db.Model(&models.Movie{}).Where("id = ?", movie.ID).Updates(updates).Error
+	return r.db.Save(movie).Error
 }
 
 func (r *MovieRepository) Delete(id uuid.UUID) error {
