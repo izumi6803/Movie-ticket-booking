@@ -52,8 +52,14 @@ func (h *PaymentHandler) CreateVNPayPayment(c *gin.Context) {
 		return
 	}
 
+	// Get client IP
+	clientIP := c.ClientIP()
+	if clientIP == "" {
+		clientIP = "127.0.0.1"
+	}
+
 	// Create VNPay payment URL
-	response, err := h.vnpayService.CreatePayment(request.BookingID, request.Amount, request.OrderInfo)
+	response, err := h.vnpayService.CreatePayment(request.BookingID, request.Amount, request.OrderInfo, clientIP)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
 		return

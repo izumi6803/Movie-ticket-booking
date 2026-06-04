@@ -27,7 +27,7 @@ type VNPayPaymentResponse struct {
 	OrderId    string `json:"orderId"`
 }
 
-func (s *VNPayService) CreatePayment(bookingID string, amount float64, orderInfo string) (*VNPayPaymentResponse, error) {
+func (s *VNPayService) CreatePayment(bookingID string, amount float64, orderInfo string, clientIP string) (*VNPayPaymentResponse, error) {
 	// VNPay uses VND and amount must be multiplied by 100
 	amountVND := int64(amount * 100)
 
@@ -47,7 +47,7 @@ func (s *VNPayService) CreatePayment(bookingID string, amount float64, orderInfo
 		"vnp_OrderType":  "other",
 		"vnp_Locale":     "vn",
 		"vnp_ReturnUrl":  s.config.ReturnURL,
-		"vnp_IpAddr":     "127.0.0.1",
+		"vnp_IpAddr":     clientIP,
 		"vnp_CreateDate": createDate,
 	}
 
