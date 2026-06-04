@@ -64,5 +64,16 @@ func (s *TheaterService) Delete(id string) error {
 	if err != nil {
 		return err
 	}
+
+	// Delete all screens associated with this theater first
+	screens, err := s.screenService.GetByTheater(id)
+	if err == nil {
+		for _, screen := range screens {
+			if err := s.screenService.Delete(screen.ID.String()); err != nil {
+				return err
+			}
+		}
+	}
+
 	return s.repo.Delete(theaterID)
 }
