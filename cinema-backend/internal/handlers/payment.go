@@ -67,8 +67,10 @@ func (h *PaymentHandler) CreateVNPayPayment(c *gin.Context) {
 	h.paymentService.UpdateOrderID(payment.ID.String(), orderId)
 
 	// Create mock payment URL that redirects to success page
-	mockPaymentUrl := fmt.Sprintf("https://%s/api/payments/vnpay/mock?bookingId=%s&orderId=%s&amount=%.0f",
-		c.Request.Host, request.BookingID, orderId, request.Amount)
+	// Use the actual backend URL
+	backendUrl := "https://cinema-backend-yc14.onrender.com"
+	mockPaymentUrl := fmt.Sprintf("%s/api/payments/vnpay/mock?bookingId=%s&orderId=%s&amount=%.0f",
+		backendUrl, request.BookingID, orderId, request.Amount)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
