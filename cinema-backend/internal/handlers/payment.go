@@ -5,6 +5,7 @@ import (
 	"cinema-backend/internal/services"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -58,22 +59,24 @@ func (h *PaymentHandler) CreateVNPayPayment(c *gin.Context) {
 		clientIP = "127.0.0.1"
 	}
 
-	// Create VNPay payment URL
-	response, err := h.vnpayService.CreatePayment(request.BookingID, request.Amount, request.OrderInfo, clientIP)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": err.Error()})
-		return
-	}
+	// MOCK PAYMENT: Auto-success for demo
+	// Generate mock order ID
+	orderId := "MOCK-" + fmt.Sprintf("%d", time.Now().Unix())
 
 	// Update payment with order ID
-	h.paymentService.UpdateOrderID(payment.ID.String(), response.OrderId)
+	h.paymentService.UpdateOrderID(payment.ID.String(), orderId)
+
+	// Create mock payment URL that redirects to success page
+	mockPaymentUrl := fmt.Sprintf("https://%s/api/payments/vnpay/mock?bookingId=%s&orderId=%s&amount=%.0f",
+		c.Request.Host, request.BookingID, orderId, request.Amount)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"paymentUrl": response.PaymentUrl,
-			"orderId":    response.OrderId,
+			"paymentUrl": mockPaymentUrl,
+			"orderId":    orderId,
 			"paymentId":  payment.ID,
+			"mock":       true,
 		},
 	})
 }
