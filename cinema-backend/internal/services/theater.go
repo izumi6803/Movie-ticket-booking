@@ -8,12 +8,12 @@ import (
 )
 
 type TheaterService struct {
-	repo       *repository.TheaterRepository
-	screenRepo *repository.ScreenRepository
+	repo          *repository.TheaterRepository
+	screenService *ScreenService
 }
 
-func NewTheaterService(repo *repository.TheaterRepository, screenRepo *repository.ScreenRepository) *TheaterService {
-	return &TheaterService{repo: repo, screenRepo: screenRepo}
+func NewTheaterService(repo *repository.TheaterRepository, screenService *ScreenService) *TheaterService {
+	return &TheaterService{repo: repo, screenService: screenService}
 }
 
 func (s *TheaterService) Create(theater *models.Theater) error {
@@ -34,7 +34,7 @@ func (s *TheaterService) Create(theater *models.Theater) error {
 				TotalSeats:  100,
 				SoundSystem: "Dolby Atmos",
 			}
-			if err := s.screenRepo.Create(screen); err != nil {
+			if err := s.screenService.Create(screen); err != nil {
 				return err
 			}
 		}

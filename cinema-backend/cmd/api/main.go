@@ -44,8 +44,8 @@ func main() {
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	movieService := services.NewMovieService(movieRepo)
-	theaterService := services.NewTheaterService(theaterRepo, screenRepo)
 	screenService := services.NewScreenService(screenRepo, seatRepo)
+	theaterService := services.NewTheaterService(theaterRepo, screenService)
 	seatService := services.NewSeatService(seatRepo, bookingRepo, seatLockRepo)
 	showtimeService := services.NewShowtimeService(showtimeRepo)
 	ticketService := services.NewTicketService(ticketRepo, showtimeRepo)
