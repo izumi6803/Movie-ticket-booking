@@ -1,12 +1,18 @@
 FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
-COPY cinema-backend/go.mod ./
-COPY cinema-backend/go.sum* ./
+
+# Copy entire repo
+COPY . /repo/
+
+# Move to cinema-backend directory
+WORKDIR /repo/cinema-backend
+
+# Download dependencies
 RUN go mod download
 
-COPY cinema-backend/ .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main cmd/api/main.go
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main cmd/api/main.go
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates
