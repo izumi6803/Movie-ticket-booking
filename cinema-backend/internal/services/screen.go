@@ -69,7 +69,44 @@ func (s *ScreenService) GetByID(id string) (*models.Screen, error) {
 }
 
 func (s *ScreenService) Update(screen *models.Screen) error {
-	return s.repo.Update(screen)
+	// Calculate total seats
+	screen.TotalSeats = screen.TotalRows * screen.SeatsPerRow
+
+	// Update screen
+	if err := s.repo.Update(screen); err != nil {
+		return err
+	}
+
+	// Delete old seats and regenerate
+	if err := s.seatRepo.DeleteByScreen(screen.ID); err != nil {
+		return err
+	}
+
+	// Auto-generate seats for the screen
+	seats := make([]models.Seat, 0, screen.TotalSeats)
+	for row := 0; row < screen.TotalRows; row++ {
+		rowLabel := string(rune('A' + row))
+		for seatNum := 1; seatNum <= screen.SeatsPerRow; seatNum++ {
+			seatType := models.SeatStandard
+			priceMultiplier := 1.0
+
+			// VIP seats in last rows
+			if row >= screen.TotalRows-2 {
+				seatType = models.SeatVIP
+				priceMultiplier = 1.5
+			}
+
+			seats = append(seats, models.Seat{
+				ScreenID:        screen.ID,
+				RowLabel:        rowLabel,
+				SeatNumber:      seatNum,
+				SeatType:        seatType,
+				PriceMultiplier: priceMultiplier,
+			})
+		}
+	}
+
+	return s.seatRepo.BulkCreate(seats)
 }
 
 func (s *ScreenService) Delete(id string) error {
