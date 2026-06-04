@@ -8,15 +8,39 @@ import (
 )
 
 type TheaterService struct {
-	repo *repository.TheaterRepository
+	repo       *repository.TheaterRepository
+	screenRepo *repository.ScreenRepository
 }
 
-func NewTheaterService(repo *repository.TheaterRepository) *TheaterService {
-	return &TheaterService{repo: repo}
+func NewTheaterService(repo *repository.TheaterRepository, screenRepo *repository.ScreenRepository) *TheaterService {
+	return &TheaterService{repo: repo, screenRepo: screenRepo}
 }
 
 func (s *TheaterService) Create(theater *models.Theater) error {
-	return s.repo.Create(theater)
+	// Create theater first
+	if err := s.repo.Create(theater); err != nil {
+		return err
+	}
+
+	// Create screens based on total_screens
+	if theater.TotalScreens > 0 {
+		for i := 1; i <= theater.TotalScreens; i++ {
+			screen := &models.Screen{
+				TheaterID:   theater.ID,
+				Name:        "Screen " + string(rune('0'+i)),
+				ScreenType:  "standard",
+				TotalRows:   10,
+				SeatsPerRow: 10,
+				TotalSeats:  100,
+				SoundSystem: "Dolby Atmos",
+			}
+			if err := s.screenRepo.Create(screen); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (s *TheaterService) GetAll() ([]models.Theater, error) {
