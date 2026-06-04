@@ -2,7 +2,7 @@ FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 COPY cinema-backend/go.mod ./
-COPY cinema-backend/go.sum ./
+COPY cinema-backend/go.sum* ./
 RUN go mod download
 
 COPY cinema-backend/ .
