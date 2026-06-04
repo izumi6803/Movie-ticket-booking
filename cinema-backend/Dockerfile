@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy entire cinema-backend directory
 COPY . /app/
 
+# List files to debug
+RUN ls -la /app/
+
 # Download dependencies
 RUN go mod download
 
