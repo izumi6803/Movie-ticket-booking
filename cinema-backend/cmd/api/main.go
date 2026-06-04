@@ -10,6 +10,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -97,20 +98,13 @@ func main() {
 	// Setup router
 	r := gin.Default()
 
-	// Handle OPTIONS preflight
-	r.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
-		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "*")
-		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
-
-		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
-			return
-		}
-
-		c.Next()
-	})
+	// CORS middleware
+	config := cors.DefaultConfig()
+	config.AllowAllOrigins = true
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
+	config.AllowHeaders = []string{"*"}
+	config.AllowCredentials = false
+	r.Use(cors.New(config))
 
 	// Public routes
 	api := r.Group("/api")
