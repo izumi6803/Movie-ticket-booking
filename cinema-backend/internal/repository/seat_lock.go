@@ -65,6 +65,15 @@ func (r *SeatLockRepository) FindBySeatAndShowtime(seatID, showtimeID uuid.UUID)
 	return &lock, nil
 }
 
+// FindRecentLocksByUser finds recent locks by user within a time range
+func (r *SeatLockRepository) FindRecentLocksByUser(userID uuid.UUID, since time.Time) ([]models.SeatLock, error) {
+	var locks []models.SeatLock
+	err := r.db.Where("user_id = ? AND created_at > ?", userID, since).
+		Order("created_at DESC").
+		Find(&locks).Error
+	return locks, err
+}
+
 // Update updates a lock
 func (r *SeatLockRepository) Update(lock *models.SeatLock) error {
 	return r.db.Save(lock).Error

@@ -17,6 +17,10 @@ const (
 	MaxLockDuration = 15 * time.Minute
 	// CleanupInterval is how often we cleanup expired locks
 	CleanupInterval = 1 * time.Minute
+	// MaxLocksPerHour is the maximum number of locks a user can create per hour
+	MaxLocksPerHour = 5
+	// LockCooldown is the cooldown period between locks (2 minutes)
+	LockCooldown = 2 * time.Minute
 )
 
 type SeatLockService struct {
@@ -72,6 +76,21 @@ func (s *SeatLockService) LockSeats(userID uuid.UUID, showtimeID uuid.UUID, seat
 	}
 
 	fmt.Printf("No booked seats found. Proceeding to lock...\n")
+
+	// Check rate limit - max 5 locks per hour
+	recentLocks, err := s.lockRepo.FindRecentLocksByUser(userID, time.Now().Add(-1*time.Hour))
+	if err == nil && len(recentLocks) >= MaxLocksPerHour {
+		return nil, errors.New("you have reached the maximum number of seat locks per hour. Please try again later")
+	}
+
+	// Check cooldown - 2 minutes between locks
+	if len(recentLocks) > 0 {
+		lastLock := recentLocks[0]
+		if time.Since(lastLock.CreatedAt) < LockCooldown {
+			remainingTime := LockCooldown - time.Since(lastLock.CreatedAt)
+			return nil, fmt.Errorf("please wait %d seconds before locking seats again", int(remainingTime.Seconds()))
+		}
+	}
 
 	// Check if user already has an active lock for this showtime
 	existingLock, err := s.lockRepo.FindActiveByUser(userID, showtimeID)
