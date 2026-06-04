@@ -85,7 +85,7 @@ func GetRecentBookings(c *gin.Context) {
 	}
 
 	var bookings []map[string]interface{}
-	dashboardDB.Raw(`
+	result := dashboardDB.Raw(`
 		SELECT b.id, b.booking_code, b.status, b.total_amount, b.created_at,
 			u.name as user_name, u.email as user_email,
 			m.title as movie_title
@@ -97,6 +97,10 @@ func GetRecentBookings(c *gin.Context) {
 		LIMIT 10
 	`).Scan(&bookings)
 
+	if result.Error != nil || bookings == nil {
+		bookings = []map[string]interface{}{}
+	}
+
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": bookings})
 }
 
@@ -107,7 +111,7 @@ func GetTopMovies(c *gin.Context) {
 	}
 
 	var movies []map[string]interface{}
-	dashboardDB.Raw(`
+	result := dashboardDB.Raw(`
 		SELECT m.title as movie_title, COUNT(b.id) as bookings
 		FROM bookings b
 		JOIN showtimes s ON b.showtime_id = s.id
@@ -117,6 +121,10 @@ func GetTopMovies(c *gin.Context) {
 		ORDER BY bookings DESC
 		LIMIT 5
 	`).Scan(&movies)
+
+	if result.Error != nil || movies == nil {
+		movies = []map[string]interface{}{}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": movies})
 }
@@ -128,7 +136,7 @@ func GetRevenueByDay(c *gin.Context) {
 	}
 
 	var revenue []map[string]interface{}
-	dashboardDB.Raw(`
+	result := dashboardDB.Raw(`
 		SELECT DATE(created_at) as date, COALESCE(SUM(total_amount), 0) as revenue
 		FROM bookings
 		WHERE status = 'paid'
@@ -136,6 +144,10 @@ func GetRevenueByDay(c *gin.Context) {
 		GROUP BY DATE(created_at)
 		ORDER BY date ASC
 	`).Scan(&revenue)
+
+	if result.Error != nil || revenue == nil {
+		revenue = []map[string]interface{}{}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": revenue})
 }
@@ -147,7 +159,7 @@ func GetBookingsByGenre(c *gin.Context) {
 	}
 
 	var genres []map[string]interface{}
-	dashboardDB.Raw(`
+	result := dashboardDB.Raw(`
 		SELECT genre, COUNT(*) as bookings
 		FROM bookings b
 		JOIN showtimes s ON b.showtime_id = s.id
@@ -157,6 +169,10 @@ func GetBookingsByGenre(c *gin.Context) {
 		GROUP BY genre
 		ORDER BY bookings DESC
 	`).Scan(&genres)
+
+	if result.Error != nil || genres == nil {
+		genres = []map[string]interface{}{}
+	}
 
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": genres})
 }
