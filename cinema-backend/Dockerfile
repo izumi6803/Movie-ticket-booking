@@ -5,6 +5,11 @@ WORKDIR /app
 # Copy entire cinema-backend directory
 COPY . /app/
 
+# Debug: check Go environment and files
+RUN go env GOMOD
+RUN ls -la /app/
+RUN cat /app/go.mod || echo "No go.mod found"
+
 # Initialize and download dependencies
 RUN go mod init cinema-backend || true
 RUN go mod tidy
