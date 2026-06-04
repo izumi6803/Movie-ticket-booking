@@ -1,16 +1,14 @@
 services:
   - type: web
     name: cinema-backend
-    runtime: go
+    runtime: docker
     plan: free
-    rootDir: cinema-backend
-    buildCommand: go build -o main cmd/api/main.go
-    startCommand: ./main
+    dockerfilePath: ./cinema-backend/Dockerfile
     envVars:
       - key: DATABASE_URL
         value: postgresql://neondb_owner:npg_T12oWvNRdecQ@ep-quiet-resonance-aoqe46jp.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
       - key: PORT
-        value: 10000
+        value: 3001
       - key: JWT_SECRET
         generateValue: true
       - key: VNPAY_TMN_CODE
