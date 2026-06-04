@@ -33,10 +33,10 @@ func Load() *Config {
 		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/cinema?sslmode=disable"),
 		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
 		VNPay: VNPayConfig{
-			TmnCode:     getEnv("VNPAY_TMN_CODE", "TEST1234"),
-			HashSecret:  getEnv("VNPAY_HASH_SECRET", "TESTSECRET1234567890123456789012"),
+			TmnCode:     getEnv("VNPAY_TMN_CODE", "STM5FOWI"),
+			HashSecret:  getEnv("VNPAY_HASH_SECRET", "1QJBK7PAT7GB8KYTPKI45X0QGLEE0TGS"),
 			Endpoint:    getEnv("VNPAY_ENDPOINT", "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"),
-			ReturnURL:   getEnv("VNPAY_RETURN_URL", "http://localhost:3001/api/payments/vnpay/return"),
+			ReturnURL:   getEnv("VNPAY_RETURN_URL", "https://cinema-backend-yc14.onrender.com/api/payments/vnpay/return"),
 			Environment: getEnv("VNPAY_ENVIRONMENT", "sandbox"),
 		},
 	}
