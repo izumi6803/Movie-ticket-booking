@@ -95,16 +95,23 @@ func main() {
 	// Set DB for dashboard handlers
 	handlers.SetDashboardDB(db)
 
-	// Setup router
+	// Setup router with CORS first
 	r := gin.Default()
 
-	// CORS middleware
-	config := cors.DefaultConfig()
-	config.AllowAllOrigins = true
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"}
-	config.AllowHeaders = []string{"*"}
-	config.AllowCredentials = false
-	r.Use(cors.New(config))
+	// CORS middleware - MUST be first
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
+		c.Writer.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization, X-Requested-With")
+		c.Writer.Header().Set("Access-Control-Max-Age", "86400")
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Public routes
 	api := r.Group("/api")
