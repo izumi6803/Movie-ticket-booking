@@ -185,8 +185,8 @@ func (h *PaymentHandler) MockPaymentPage(c *gin.Context) {
             <p>Order ID: %s</p>
             <p>This is a sandbox payment for testing</p>
         </div>
-        <a href="http://localhost:3001/api/payments/vnpay/mock-success?bookingId=%s&orderId=%s" class="btn btn-success">Simulate Successful Payment</a>
-        <a href="http://localhost:3001/api/payments/vnpay/mock-fail?bookingId=%s&orderId=%s" class="btn btn-fail">Simulate Failed Payment</a>
+	<a href="/api/payments/vnpay/mock-success?bookingId=%s&orderId=%s" class="btn btn-success">Simulate Successful Payment</a>
+        <a href="/api/payments/vnpay/mock-fail?bookingId=%s&orderId=%s" class="btn btn-fail">Simulate Failed Payment</a>
     </div>
 </body>
 </html>`, amount, bookingID, orderId, bookingID, orderId, bookingID, orderId)
@@ -207,15 +207,17 @@ func (h *PaymentHandler) MockPaymentSuccess(c *gin.Context) {
 		"responseCode":  "00",
 	}
 
+	frontendUrl := "https://movie-ticket-booking-frontend-phi.vercel.app"
+
 	if err := h.bookingService.ConfirmPayment(bookingID, paymentInfo); err != nil {
-		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/payment/callback?status=failed&bookingId=%s&message=%s", bookingID, err.Error()))
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/payment/callback?status=failed&bookingId=%s&message=%s", frontendUrl, bookingID, err.Error()))
 		return
 	}
 
 	// Update payment record
 	h.paymentService.UpdatePaymentStatusByOrderID(orderID, models.PaymentPaid, "MOCK_"+orderID, "NCB")
 
-	c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/payment/callback?status=success&bookingId=%s", bookingID))
+	c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/payment/callback?status=success&bookingId=%s", frontendUrl, bookingID))
 }
 
 // MockPaymentFail simulates a failed payment
