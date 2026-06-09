@@ -59,7 +59,7 @@ func (h *PaymentHandler) CreateVNPayPayment(c *gin.Context) {
 		clientIP = "127.0.0.1"
 	}
 
-	// MOCK PAYMENT: Auto-success for demo
+	// MOCK PAYMENT: Auto-success for demo (v2 - correct frontend URL)
 	// Generate mock order ID
 	orderId := "MOCK-" + fmt.Sprintf("%d", time.Now().Unix())
 
