@@ -7,6 +7,7 @@ vendor/
 dist/
 build/
 *.exe
+cinema-backend/main
 
 # Environment variables
 .env
