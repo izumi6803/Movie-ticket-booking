@@ -94,7 +94,7 @@ func (h *PaymentHandler) VNPayReturn(c *gin.Context) {
 
 	// Verify signature
 	if !h.vnpayService.VerifyReturn(params) {
-		c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/payment/callback?status=failed&message=invalid_signature")
+		c.Redirect(http.StatusTemporaryRedirect, "https://booking-room-admin.vercel.app/payment/callback?status=failed&message=invalid_signature")
 		return
 	}
 
@@ -114,20 +114,23 @@ func (h *PaymentHandler) VNPayReturn(c *gin.Context) {
 		}
 
 		if err := h.bookingService.ConfirmPayment(bookingID, paymentInfo); err != nil {
-			c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/payment/callback?status=failed&bookingId=%s&message=%s", bookingID, err.Error()))
+			frontendUrl := "https://booking-room-admin.vercel.app"
+			c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/payment/callback?status=failed&bookingId=%s&message=%s", frontendUrl, bookingID, err.Error()))
 			return
 		}
 
 		// Update payment record
 		h.paymentService.UpdatePaymentStatusByOrderID(orderID, models.PaymentPaid, transactionID, bankCode)
 
-		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/payment/callback?status=success&bookingId=%s", bookingID))
+		frontendUrl := "https://booking-room-admin.vercel.app"
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/payment/callback?status=success&bookingId=%s", frontendUrl, bookingID))
 	} else {
 		// Payment failed
 		h.bookingService.CancelBooking(bookingID, "payment_failed")
 		h.paymentService.UpdatePaymentStatusByOrderID(orderID, models.PaymentFailed, "", "")
 
-		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/payment/callback?status=failed&bookingId=%s&code=%s", bookingID, responseCode))
+		frontendUrl := "https://booking-room-admin.vercel.app"
+		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/payment/callback?status=failed&bookingId=%s&code=%s", frontendUrl, bookingID, responseCode))
 	}
 }
 
@@ -207,7 +210,7 @@ func (h *PaymentHandler) MockPaymentSuccess(c *gin.Context) {
 		"responseCode":  "00",
 	}
 
-	frontendUrl := "https://movie-ticket-booking-frontend-phi.vercel.app"
+	frontendUrl := "https://booking-room-admin.vercel.app"
 
 	if err := h.bookingService.ConfirmPayment(bookingID, paymentInfo); err != nil {
 		c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("%s/payment/callback?status=failed&bookingId=%s&message=%s", frontendUrl, bookingID, err.Error()))
@@ -228,5 +231,5 @@ func (h *PaymentHandler) MockPaymentFail(c *gin.Context) {
 	h.bookingService.CancelBooking(bookingID, "mock_payment_failed")
 	h.paymentService.UpdatePaymentStatusByOrderID(orderID, models.PaymentFailed, "", "")
 
-	c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("http://localhost:3000/payment/callback?status=failed&bookingId=%s&code=99", bookingID))
+	c.Redirect(http.StatusTemporaryRedirect, fmt.Sprintf("https://booking-room-admin.vercel.app/payment/callback?status=failed&bookingId=%s&code=99", bookingID))
 }
