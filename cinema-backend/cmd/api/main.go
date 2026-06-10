@@ -62,6 +62,8 @@ func main() {
 	}
 	if cloudinaryService != nil && cloudinaryService.IsEnabled() {
 		log.Println("Cloudinary integration enabled")
+	} else {
+		log.Println("Cloudinary integration disabled - using local file storage")
 	}
 
 	// Start cleanup routine for expired seat locks
