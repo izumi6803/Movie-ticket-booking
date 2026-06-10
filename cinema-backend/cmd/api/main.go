@@ -8,6 +8,7 @@ import (
 	"cinema-backend/internal/services"
 	ws "cinema-backend/internal/websocket"
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -99,7 +100,11 @@ func main() {
 	bookingHandler := handlers.NewBookingHandler(bookingService)
 	paymentHandler := handlers.NewPaymentHandler(vnpayService, bookingService, paymentService)
 	seatLockHandler := handlers.NewSeatLockHandler(seatLockService)
-	uploadHandler := handlers.NewUploadHandler("http://localhost:"+cfg.Port+"/api", cloudinaryService)
+	baseURL := os.Getenv("RENDER_EXTERNAL_URL")
+	if baseURL == "" {
+		baseURL = "http://localhost:" + cfg.Port
+	}
+	uploadHandler := handlers.NewUploadHandler(baseURL+"/api", cloudinaryService)
 
 	// Set DB for dashboard handlers
 	handlers.SetDashboardDB(db)

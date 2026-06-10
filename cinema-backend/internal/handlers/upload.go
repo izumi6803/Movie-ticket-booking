@@ -59,7 +59,7 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 	if h.cloudinaryService != nil && h.cloudinaryService.IsEnabled() {
 		url, err := h.cloudinaryService.Upload(c.Request.Context(), file, header)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to upload to cloudinary"})
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to upload to cloudinary: " + err.Error()})
 			return
 		}
 
@@ -73,6 +73,8 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 		})
 		return
 	}
+
+	// Fallback to local filesystem (dev mode)
 
 	filename := fmt.Sprintf("%s_%s%s", time.Now().Format("20060102_150405"), uuid.New().String()[:8], ext)
 	filepath := filepath.Join(UploadDir, filename)
