@@ -9,6 +9,7 @@ import (
 	ws "cinema-backend/internal/websocket"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -41,6 +42,7 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	seatLockRepo := repository.NewSeatLockRepository(db)
 	paymentRepo := repository.NewPaymentRepository(db)
+	settingRepo := repository.NewSettingRepository(db)
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
@@ -70,11 +72,20 @@ func main() {
 	// Start cleanup routine for expired seat locks
 	seatLockService.StartCleanupRoutine()
 
-	// Start cleanup routine for expired showtimes (every hour)
+	// Start cleanup routines (every hour)
 	go func() {
 		for {
-			if err := showtimeService.DeleteExpired(); err != nil {
-				log.Printf("Error deleting expired showtimes: %v", err)
+			showtimeService.DeleteExpired()
+
+			retentionDays := 7
+			setting, err := settingRepo.GetByKey("ticket_retention_days")
+			if err == nil {
+				if d, err := strconv.Atoi(setting.Value); err == nil && d > 0 {
+					retentionDays = d
+				}
+			}
+			if err := ticketRepo.DeleteExpired(retentionDays); err != nil {
+				log.Printf("Error deleting expired tickets: %v", err)
 			}
 			time.Sleep(1 * time.Hour)
 		}
@@ -105,6 +116,7 @@ func main() {
 		baseURL = "http://localhost:" + cfg.Port
 	}
 	uploadHandler := handlers.NewUploadHandler(baseURL+"/api", cloudinaryService)
+	settingHandler := handlers.NewSettingHandler(settingRepo)
 
 	// Set DB for dashboard handlers
 	handlers.SetDashboardDB(db)
@@ -239,6 +251,10 @@ func main() {
 			admin.GET("/users/:id", authHandler.GetUserByID)
 			admin.GET("/users/:id/bookings", bookingHandler.GetMyBookings)
 			admin.DELETE("/users/:id", authHandler.DeleteUser)
+
+			// Settings
+			admin.GET("/settings", settingHandler.GetAll)
+			admin.PUT("/settings", settingHandler.Update)
 
 			// Dashboard
 			admin.GET("/dashboard/admin-stats", handlers.GetAdminStats)

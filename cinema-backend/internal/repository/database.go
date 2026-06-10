@@ -39,5 +39,6 @@ func Migrate(databaseDB *gorm.DB) error {
 		&models.OrderItem{},
 		&models.SeatLock{},
 		&models.Payment{},
+		&models.SystemSetting{},
 	)
 }

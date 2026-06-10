@@ -2,6 +2,7 @@ package repository
 
 import (
 	"cinema-backend/internal/models"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -50,4 +51,12 @@ func (r *TicketRepository) Cancel(id uuid.UUID) error {
 func (r *TicketRepository) UpdateQRCode(id uuid.UUID, qrCode string) error {
 	return r.db.Model(&models.Ticket{}).Where("id = ?", id).
 		Update("qr_code", qrCode).Error
+}
+
+func (r *TicketRepository) DeleteExpired(retentionDays int) error {
+	cutoff := time.Now().AddDate(0, 0, -retentionDays)
+	return r.db.
+		Joins("JOIN showtimes ON showtimes.id = tickets.showtime_id").
+		Where("showtimes.end_time < ?", cutoff).
+		Delete(&models.Ticket{}).Error
 }
