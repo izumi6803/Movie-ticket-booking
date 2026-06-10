@@ -8,10 +8,11 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
-	VNPay       VNPayConfig
+	Port          string
+	DatabaseURL   string
+	JWTSecret     string
+	CloudinaryURL string
+	VNPay         VNPayConfig
 }
 
 type VNPayConfig struct {
@@ -29,9 +30,10 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:        getEnv("PORT", "3001"),
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/cinema?sslmode=disable"),
-		JWTSecret:   getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		Port:          getEnv("PORT", "3001"),
+		DatabaseURL:   getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/cinema?sslmode=disable"),
+		JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
+		CloudinaryURL: getEnv("CLOUDINARY_URL", ""),
 		VNPay: VNPayConfig{
 			TmnCode:     getEnv("VNPAY_TMN_CODE", "STM5FOWI"),
 			HashSecret:  getEnv("VNPAY_HASH_SECRET", "1QJBK7PAT7GB8KYTPKI45X0QGLEE0TGS"),

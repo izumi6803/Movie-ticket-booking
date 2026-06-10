@@ -56,6 +56,14 @@ func main() {
 	vnpayService := services.NewVNPayService(cfg.VNPay)
 	seatLockService := services.NewSeatLockService(seatLockRepo, bookingRepo)
 
+	cloudinaryService, err := services.NewCloudinaryService(cfg.CloudinaryURL)
+	if err != nil {
+		log.Printf("Warning: failed to initialize Cloudinary: %v", err)
+	}
+	if cloudinaryService != nil && cloudinaryService.IsEnabled() {
+		log.Println("Cloudinary integration enabled")
+	}
+
 	// Start cleanup routine for expired seat locks
 	seatLockService.StartCleanupRoutine()
 
@@ -89,7 +97,7 @@ func main() {
 	bookingHandler := handlers.NewBookingHandler(bookingService)
 	paymentHandler := handlers.NewPaymentHandler(vnpayService, bookingService, paymentService)
 	seatLockHandler := handlers.NewSeatLockHandler(seatLockService)
-	uploadHandler := handlers.NewUploadHandler("http://localhost:" + cfg.Port + "/api")
+	uploadHandler := handlers.NewUploadHandler("http://localhost:"+cfg.Port+"/api", cloudinaryService)
 
 	// Set DB for dashboard handlers
 	handlers.SetDashboardDB(db)

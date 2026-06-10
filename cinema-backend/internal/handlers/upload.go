@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"cinema-backend/internal/services"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -20,20 +22,22 @@ const (
 )
 
 type UploadHandler struct {
-	baseURL string
+	baseURL           string
+	cloudinaryService *services.CloudinaryService
 }
 
-func NewUploadHandler(baseURL string) *UploadHandler {
-	// Create uploads directory if not exists
+func NewUploadHandler(baseURL string, cloudinaryService *services.CloudinaryService) *UploadHandler {
 	if err := os.MkdirAll(UploadDir, 0755); err != nil {
 		panic(fmt.Sprintf("failed to create upload directory: %v", err))
 	}
 
-	return &UploadHandler{baseURL: baseURL}
+	return &UploadHandler{
+		baseURL:           baseURL,
+		cloudinaryService: cloudinaryService,
+	}
 }
 
 func (h *UploadHandler) UploadImage(c *gin.Context) {
-	// Get file from request
 	file, header, err := c.Request.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "no file provided"})
@@ -41,24 +45,38 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// Check file size
 	if header.Size > MaxFileSize {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "file too large (max 10MB)"})
 		return
 	}
 
-	// Check file extension
 	ext := strings.ToLower(filepath.Ext(header.Filename))
 	if !strings.Contains(AllowedExts, ext) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid file type. Allowed: " + AllowedExts})
 		return
 	}
 
-	// Generate unique filename
+	if h.cloudinaryService != nil && h.cloudinaryService.IsEnabled() {
+		url, err := h.cloudinaryService.Upload(c.Request.Context(), file, header)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to upload to cloudinary"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data": gin.H{
+				"url":      url,
+				"filename": header.Filename,
+				"size":     header.Size,
+			},
+		})
+		return
+	}
+
 	filename := fmt.Sprintf("%s_%s%s", time.Now().Format("20060102_150405"), uuid.New().String()[:8], ext)
 	filepath := filepath.Join(UploadDir, filename)
 
-	// Create file
 	out, err := os.Create(filepath)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to save file"})
@@ -66,14 +84,12 @@ func (h *UploadHandler) UploadImage(c *gin.Context) {
 	}
 	defer out.Close()
 
-	// Copy file content
 	_, err = io.Copy(out, file)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to save file"})
 		return
 	}
 
-	// Return file URL
 	fileURL := fmt.Sprintf("%s/uploads/%s", h.baseURL, filename)
 
 	c.JSON(http.StatusOK, gin.H{
@@ -93,9 +109,16 @@ func (h *UploadHandler) DeleteImage(c *gin.Context) {
 		return
 	}
 
-	filepath := filepath.Join(UploadDir, filename)
+	if h.cloudinaryService != nil && h.cloudinaryService.IsEnabled() {
+		if err := h.cloudinaryService.Delete(c.Request.Context(), filename); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "failed to delete file from cloudinary"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "message": "file deleted"})
+		return
+	}
 
-	// Security check: prevent directory traversal
+	filepath := filepath.Join(UploadDir, filename)
 	if !strings.HasPrefix(filepath, UploadDir) {
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid filename"})
 		return
@@ -116,7 +139,6 @@ func (h *UploadHandler) ServeImage(c *gin.Context) {
 		return
 	}
 
-	// Get absolute path
 	absUploadDir, err := filepath.Abs(UploadDir)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"success": false, "message": "server error"})
@@ -124,21 +146,17 @@ func (h *UploadHandler) ServeImage(c *gin.Context) {
 	}
 
 	filePath := filepath.Join(absUploadDir, filename)
-
-	// Security check
 	if !strings.HasPrefix(filePath, absUploadDir) {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "invalid filename"})
 		return
 	}
 
-	// Check if file exists
 	fileInfo, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "file not found"})
 		return
 	}
 
-	// Set content type based on extension
 	ext := strings.ToLower(filepath.Ext(filename))
 	contentType := "application/octet-stream"
 	switch ext {
