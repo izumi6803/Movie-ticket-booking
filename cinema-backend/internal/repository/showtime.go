@@ -30,7 +30,11 @@ func (r *ShowtimeRepository) FindAll() ([]models.Showtime, error) {
 }
 
 func (r *ShowtimeRepository) DeleteExpired() error {
-	return r.db.Where("start_time < ?", time.Now()).Delete(&models.Showtime{}).Error
+	return r.db.
+		Where("start_time < ?", time.Now()).
+		Where("id NOT IN (SELECT DISTINCT showtime_id FROM tickets)").
+		Where("id NOT IN (SELECT DISTINCT showtime_id FROM bookings)").
+		Delete(&models.Showtime{}).Error
 }
 
 func (r *ShowtimeRepository) FindByMovie(movieID uuid.UUID) ([]models.Showtime, error) {
