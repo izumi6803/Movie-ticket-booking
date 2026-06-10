@@ -152,6 +152,77 @@ func GetRevenueByDay(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": revenue})
 }
 
+func GetRevenueByMovie(c *gin.Context) {
+	if dashboardDB == nil {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})
+		return
+	}
+
+	var data []map[string]interface{}
+	result := dashboardDB.Raw(`
+		SELECT m.title, COALESCE(SUM(b.total_amount), 0) as revenue
+		FROM bookings b
+		JOIN showtimes s ON b.showtime_id = s.id
+		JOIN movies m ON s.movie_id = m.id
+		WHERE b.status = 'paid'
+		GROUP BY m.id, m.title
+		ORDER BY revenue DESC
+	`).Scan(&data)
+
+	if result.Error != nil || data == nil {
+		data = []map[string]interface{}{}
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
+}
+
+func GetRevenueByTheater(c *gin.Context) {
+	if dashboardDB == nil {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})
+		return
+	}
+
+	var data []map[string]interface{}
+	result := dashboardDB.Raw(`
+		SELECT t.name as theater, COALESCE(SUM(b.total_amount), 0) as revenue
+		FROM bookings b
+		JOIN showtimes s ON b.showtime_id = s.id
+		JOIN screens sc ON s.screen_id = sc.id
+		JOIN theaters t ON sc.theater_id = t.id
+		WHERE b.status = 'paid'
+		GROUP BY t.id, t.name
+		ORDER BY revenue DESC
+	`).Scan(&data)
+
+	if result.Error != nil || data == nil {
+		data = []map[string]interface{}{}
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
+}
+
+func GetRevenueByGenre(c *gin.Context) {
+	if dashboardDB == nil {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})
+		return
+	}
+
+	var data []map[string]interface{}
+	result := dashboardDB.Raw(`
+		SELECT genre, COALESCE(SUM(b.total_amount), 0) as revenue
+		FROM bookings b
+		JOIN showtimes s ON b.showtime_id = s.id
+		JOIN movies m ON s.movie_id = m.id
+		CROSS JOIN LATERAL UNNEST(m.genre) as genre
+		WHERE b.status = 'paid'
+		GROUP BY genre
+		ORDER BY revenue DESC
+	`).Scan(&data)
+
+	if result.Error != nil || data == nil {
+		data = []map[string]interface{}{}
+	}
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": data})
+}
+
 func GetBookingsByGenre(c *gin.Context) {
 	if dashboardDB == nil {
 		c.JSON(http.StatusOK, gin.H{"success": true, "data": []interface{}{}})

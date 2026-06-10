@@ -261,6 +261,9 @@ func main() {
 			admin.GET("/dashboard/recent-bookings", handlers.GetRecentBookings)
 			admin.GET("/dashboard/top-movies", handlers.GetTopMovies)
 			admin.GET("/dashboard/revenue-by-day", handlers.GetRevenueByDay)
+			admin.GET("/dashboard/revenue-by-movie", handlers.GetRevenueByMovie)
+			admin.GET("/dashboard/revenue-by-theater", handlers.GetRevenueByTheater)
+			admin.GET("/dashboard/revenue-by-genre", handlers.GetRevenueByGenre)
 			admin.GET("/dashboard/bookings-by-genre", handlers.GetBookingsByGenre)
 		}
 
