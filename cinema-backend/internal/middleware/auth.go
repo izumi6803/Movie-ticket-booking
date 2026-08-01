@@ -9,7 +9,7 @@ import (
 )
 
 func AuthMiddleware(jwtSecret string) gin.HandlerFunc {
-	authService := services.NewAuthService(nil, jwtSecret)
+	authService := services.NewAuthService(nil, jwtSecret, nil, "")
 
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")

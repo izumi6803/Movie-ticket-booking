@@ -2,6 +2,8 @@ package repository
 
 import (
 	"cinema-backend/internal/models"
+	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -69,6 +71,37 @@ func (r *UserRepository) FindByRole(role models.UserRole, page, limit int) ([]mo
 
 func (r *UserRepository) Update(user *models.User) error {
 	return r.db.Save(user).Error
+}
+
+func (r *UserRepository) DeletePasswordResetTokens(userID uuid.UUID) error {
+	return r.db.Where("user_id = ? OR expires_at <= ? OR used_at IS NOT NULL", userID, time.Now()).
+		Delete(&models.PasswordResetToken{}).Error
+}
+
+func (r *UserRepository) CreatePasswordResetToken(token *models.PasswordResetToken) error {
+	return r.db.Create(token).Error
+}
+
+func (r *UserRepository) ConsumePasswordResetToken(tokenHash string) (*models.PasswordResetToken, error) {
+	var token models.PasswordResetToken
+	if err := r.db.Where("token_hash = ? AND used_at IS NULL AND expires_at > ?", tokenHash, time.Now()).
+		First(&token).Error; err != nil {
+		return nil, err
+	}
+
+	now := time.Now()
+	result := r.db.Model(&models.PasswordResetToken{}).
+		Where("id = ? AND used_at IS NULL", token.ID).
+		Update("used_at", now)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected != 1 {
+		return nil, errors.New("reset token has already been used")
+	}
+
+	token.UsedAt = &now
+	return &token, nil
 }
 
 func (r *UserRepository) Delete(id uuid.UUID) error {

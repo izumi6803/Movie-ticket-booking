@@ -20,7 +20,7 @@ VALUES (
     uuid_generate_v4(),
     'Test Customer',
     'customer@test.com',
-    '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    '$2a$10$OD1XtwQJgoocdY2YwrkffO7OGtGEi0cueQZSOMp6uzdSmqkkK47XC',
     'customer',
     '0987654321',
     CURRENT_TIMESTAMP,

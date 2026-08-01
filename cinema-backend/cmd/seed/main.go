@@ -31,7 +31,7 @@ func main() {
 		Phone:    &phone1,
 	}
 
-	result := db.Where("email = ?", admin.Email).FirstOrCreate(&admin)
+	result := db.Where("email = ?", admin.Email).Assign(admin).FirstOrCreate(&admin)
 	if result.Error != nil {
 		log.Fatal("Failed to create admin:", result.Error)
 	}
@@ -47,7 +47,7 @@ func main() {
 		Phone:    &phone2,
 	}
 
-	result = db.Where("email = ?", customer.Email).FirstOrCreate(&customer)
+	result = db.Where("email = ?", customer.Email).Assign(customer).FirstOrCreate(&customer)
 	if result.Error != nil {
 		log.Fatal("Failed to create customer:", result.Error)
 	}

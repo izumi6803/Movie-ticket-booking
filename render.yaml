@@ -6,22 +6,36 @@ services:
     dockerfilePath: ./Dockerfile
     envVars:
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_T12oWvNRdecQ@ep-quiet-resonance-aoqe46jp.c-2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+        sync: false
       - key: PORT
         value: 3001
       - key: JWT_SECRET
         generateValue: true
       - key: VNPAY_TMN_CODE
-        value: TEST1234
+        sync: false
       - key: VNPAY_HASH_SECRET
-        value: TESTSECRET1234567890123456789012
+        sync: false
       - key: VNPAY_ENDPOINT
         value: https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
       - key: VNPAY_RETURN_URL
-        value: https://cinema-backend.onrender.com/api/payments/vnpay/return
+        value: https://cinema-backend-yc14.onrender.com/api/payments/vnpay/return
       - key: VNPAY_ENVIRONMENT
         value: sandbox
       - key: CLOUDINARY_URL
-        value: cloudinary://243844755747319:c8icIbIygX8hBdH4Avz6jjJE0ug@dsa4sisfl
+        sync: false
+      - key: FRONTEND_URL
+        value: https://booking-room-admin.vercel.app
+      - key: APP_ENV
+        value: production
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
     healthCheckPath: /api/health
     autoDeploy: true

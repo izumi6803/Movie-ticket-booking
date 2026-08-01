@@ -77,13 +77,48 @@ func (s *SeatLockService) LockSeats(userID uuid.UUID, showtimeID uuid.UUID, seat
 
 	fmt.Printf("No booked seats found. Proceeding to lock...\n")
 
-	// Check rate limit - max 5 locks per hour
+	// Update an existing lock in place so seat selection can add and remove seats.
+	existingLock, err := s.lockRepo.FindActiveByUser(userID, showtimeID)
+	if err == nil && existingLock != nil {
+		if err := s.ensureSeatsAvailableForUpdate(showtimeID, existingLock.ID, seatIDs); err != nil {
+			return nil, err
+		}
+
+		previousSeatIDs := existingLock.SeatIDs
+		previousSeatLabels := existingLock.SeatLabels
+		existingLock.SeatIDs = seatIDs
+		existingLock.SeatLabels = seatLabels
+		existingLock.ExpiresAt = time.Now().Add(DefaultLockDuration)
+		if err := s.lockRepo.Update(existingLock); err != nil {
+			return nil, err
+		}
+
+		if s.hub != nil {
+			removedSeatIDs := difference(previousSeatIDs, seatIDs)
+			if len(removedSeatIDs) > 0 {
+				removedSeatLabels := make([]string, 0, len(removedSeatIDs))
+				for _, seatID := range removedSeatIDs {
+					for index, previousSeatID := range previousSeatIDs {
+						if previousSeatID == seatID && index < len(previousSeatLabels) {
+							removedSeatLabels = append(removedSeatLabels, previousSeatLabels[index])
+							break
+						}
+					}
+				}
+				s.hub.BroadcastSeatUnlock(showtimeID.String(), uuidStrings(removedSeatIDs), removedSeatLabels)
+			}
+			s.hub.BroadcastSeatLock(showtimeID.String(), uuidStrings(seatIDs), seatLabels, userID.String())
+		}
+
+		return existingLock, nil
+	}
+
+	// Rate limit and cooldown apply only when creating a new lock.
 	recentLocks, err := s.lockRepo.FindRecentLocksByUser(userID, time.Now().Add(-1*time.Hour))
 	if err == nil && len(recentLocks) >= MaxLocksPerHour {
 		return nil, errors.New("you have reached the maximum number of seat locks per hour. Please try again later")
 	}
 
-	// Check cooldown - 2 minutes between locks
 	if len(recentLocks) > 0 {
 		lastLock := recentLocks[0]
 		if time.Since(lastLock.CreatedAt) < LockCooldown {
@@ -92,63 +127,8 @@ func (s *SeatLockService) LockSeats(userID uuid.UUID, showtimeID uuid.UUID, seat
 		}
 	}
 
-	// Check if user already has an active lock for this showtime
-	existingLock, err := s.lockRepo.FindActiveByUser(userID, showtimeID)
-	if err != nil {
-		fmt.Printf("No existing lock found for user: %v\n", err)
-	}
-	if err == nil && existingLock != nil {
-		fmt.Printf("Found existing lock for user %s, updating...\n", userID)
-
-		// Merge new seats with existing seats (avoid duplicates)
-		seatMap := make(map[uuid.UUID]bool)
-		labelMap := make(map[uuid.UUID]string)
-
-		// Add existing seats
-		for i, id := range existingLock.SeatIDs {
-			seatMap[id] = true
-			if i < len(existingLock.SeatLabels) {
-				labelMap[id] = existingLock.SeatLabels[i]
-			}
-		}
-
-		// Add new seats
-		for i, id := range seatIDs {
-			seatMap[id] = true
-			if i < len(seatLabels) {
-				labelMap[id] = seatLabels[i]
-			}
-		}
-
-		// Convert back to slices
-		mergedSeatIDs := make([]uuid.UUID, 0, len(seatMap))
-		mergedSeatLabels := make([]string, 0, len(seatMap))
-		for id := range seatMap {
-			mergedSeatIDs = append(mergedSeatIDs, id)
-			if label, ok := labelMap[id]; ok {
-				mergedSeatLabels = append(mergedSeatLabels, label)
-			}
-		}
-
-		// Update existing lock with merged seats
-		existingLock.SeatIDs = mergedSeatIDs
-		existingLock.SeatLabels = mergedSeatLabels
-		existingLock.ExpiresAt = time.Now().Add(DefaultLockDuration)
-		if err := s.lockRepo.Update(existingLock); err != nil {
-			fmt.Printf("Failed to update lock: %v\n", err)
-			// Don't return error, just log it
-		} else {
-			// Broadcast update
-			if s.hub != nil {
-				mergedSeatIDStrs := make([]string, len(mergedSeatIDs))
-				for i, id := range mergedSeatIDs {
-					mergedSeatIDStrs[i] = id.String()
-				}
-				s.hub.BroadcastSeatLock(showtimeID.String(), mergedSeatIDStrs, mergedSeatLabels, userID.String())
-			}
-			fmt.Printf("Lock updated successfully with %d seats\n", len(mergedSeatIDs))
-			return existingLock, nil
-		}
+	if err := s.ensureSeatsAvailableForUpdate(showtimeID, uuid.Nil, seatIDs); err != nil {
+		return nil, err
 	}
 
 	fmt.Printf("No existing lock found. Creating new lock...\n")
@@ -180,6 +160,54 @@ func (s *SeatLockService) LockSeats(userID uuid.UUID, showtimeID uuid.UUID, seat
 	}
 
 	return lock, nil
+}
+
+func (s *SeatLockService) ensureSeatsAvailableForUpdate(showtimeID, ignoredLockID uuid.UUID, seatIDs []uuid.UUID) error {
+	activeLocks, err := s.lockRepo.FindActiveByShowtime(showtimeID)
+	if err != nil {
+		return err
+	}
+
+	requestedSeats := make(map[uuid.UUID]bool, len(seatIDs))
+	for _, seatID := range seatIDs {
+		requestedSeats[seatID] = true
+	}
+
+	for _, lock := range activeLocks {
+		if lock.ID == ignoredLockID {
+			continue
+		}
+		for _, seatID := range lock.SeatIDs {
+			if requestedSeats[seatID] {
+				return errors.New("one or more seats are reserved by another user")
+			}
+		}
+	}
+
+	return nil
+}
+
+func difference(previous, current []uuid.UUID) []uuid.UUID {
+	currentSeats := make(map[uuid.UUID]bool, len(current))
+	for _, seatID := range current {
+		currentSeats[seatID] = true
+	}
+
+	removed := make([]uuid.UUID, 0)
+	for _, seatID := range previous {
+		if !currentSeats[seatID] {
+			removed = append(removed, seatID)
+		}
+	}
+	return removed
+}
+
+func uuidStrings(ids []uuid.UUID) []string {
+	values := make([]string, len(ids))
+	for index, id := range ids {
+		values[index] = id.String()
+	}
+	return values
 }
 
 // UnlockSeats releases a seat lock

@@ -27,6 +27,7 @@ func Migrate(databaseDB *gorm.DB) error {
 	db = databaseDB
 	return db.AutoMigrate(
 		&models.User{},
+		&models.PasswordResetToken{},
 		&models.Movie{},
 		&models.Theater{},
 		&models.Screen{},

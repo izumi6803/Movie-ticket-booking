@@ -12,6 +12,7 @@ type Config struct {
 	DatabaseURL   string
 	JWTSecret     string
 	CloudinaryURL string
+	FrontendURL   string
 	VNPay         VNPayConfig
 }
 
@@ -34,6 +35,7 @@ func Load() *Config {
 		DatabaseURL:   getEnv("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/cinema?sslmode=disable"),
 		JWTSecret:     getEnv("JWT_SECRET", "your-secret-key-change-in-production"),
 		CloudinaryURL: getEnv("CLOUDINARY_URL", ""),
+		FrontendURL:   getEnv("FRONTEND_URL", "http://localhost:3000"),
 		VNPay: VNPayConfig{
 			TmnCode:     getEnv("VNPAY_TMN_CODE", "STM5FOWI"),
 			HashSecret:  getEnv("VNPAY_HASH_SECRET", "1QJBK7PAT7GB8KYTPKI45X0QGLEE0TGS"),

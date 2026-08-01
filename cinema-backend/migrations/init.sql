@@ -14,6 +14,19 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- One-time password reset tokens. Only token hashes are stored.
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) UNIQUE NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    used_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at
+    ON password_reset_tokens(expires_at);
+
 -- Movies table
 CREATE TABLE IF NOT EXISTS movies (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

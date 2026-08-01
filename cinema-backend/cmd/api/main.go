@@ -45,7 +45,8 @@ func main() {
 	settingRepo := repository.NewSettingRepository(db)
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
+	emailService := services.NewEmailService()
+	authService := services.NewAuthService(userRepo, cfg.JWTSecret, emailService, cfg.FrontendURL)
 	movieService := services.NewMovieService(movieRepo)
 	screenService := services.NewScreenService(screenRepo, seatRepo)
 	theaterService := services.NewTheaterService(theaterRepo, screenService)
@@ -54,7 +55,6 @@ func main() {
 	ticketService := services.NewTicketService(ticketRepo, showtimeRepo)
 	concessionService := services.NewConcessionService(concessionRepo)
 	paymentService := services.NewPaymentService(paymentRepo)
-	emailService := services.NewEmailService()
 	bookingService := services.NewBookingService(bookingRepo, showtimeRepo, seatLockRepo, paymentRepo, ticketRepo, emailService)
 	vnpayService := services.NewVNPayService(cfg.VNPay)
 	seatLockService := services.NewSeatLockService(seatLockRepo, bookingRepo)
@@ -151,6 +151,8 @@ func main() {
 		{
 			auth.POST("/register", authHandler.Register)
 			auth.POST("/login", authHandler.Login)
+			auth.POST("/forgot-password", authHandler.ForgotPassword)
+			auth.POST("/reset-password", authHandler.ResetPassword)
 		}
 
 		// Public movie routes

@@ -2,18 +2,27 @@ package handlers
 
 import (
 	"cinema-backend/internal/services"
+	"log"
 	"net/http"
+	"os"
+	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
-	authService *services.AuthService
+	authService       *services.AuthService
+	resetRateMu       sync.Mutex
+	resetRateByClient map[string]time.Time
 }
 
 func NewAuthHandler(authService *services.AuthService) *AuthHandler {
-	return &AuthHandler{authService: authService}
+	return &AuthHandler{
+		authService:       authService,
+		resetRateByClient: make(map[string]time.Time),
+	}
 }
 
 type RegisterRequest struct {
@@ -26,6 +35,15 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email" binding:"required,email"`
 	Password string `json:"password" binding:"required"`
+}
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"newPassword" binding:"required,min=6"`
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -70,6 +88,60 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			"token": token,
 		},
 	})
+}
+
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "a valid email is required"})
+		return
+	}
+
+	if os.Getenv("APP_ENV") == "production" {
+		clientKey := c.ClientIP()
+		h.resetRateMu.Lock()
+		lastRequest, recentlyRequested := h.resetRateByClient[clientKey]
+		if recentlyRequested && time.Since(lastRequest) < time.Minute {
+			h.resetRateMu.Unlock()
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"message": "If an account exists for that email, a password reset link has been sent.",
+			})
+			return
+		}
+		h.resetRateByClient[clientKey] = time.Now()
+		h.resetRateMu.Unlock()
+	}
+
+	resetURL, err := h.authService.RequestPasswordReset(req.Email)
+	if err != nil {
+		log.Printf("Password reset request failed: %v", err)
+	}
+
+	response := gin.H{
+		"success": true,
+		"message": "If an account exists for that email, a password reset link has been sent.",
+	}
+	if resetURL != "" {
+		response["data"] = gin.H{"developmentResetUrl": resetURL}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "token and a password of at least 6 characters are required"})
+		return
+	}
+
+	if err := h.authService.ResetPassword(req.Token, req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "This reset link is invalid or has expired."})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "message": "password reset successfully"})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {

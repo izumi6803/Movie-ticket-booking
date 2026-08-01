@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"html"
 	"net/smtp"
 	"os"
 )
@@ -26,6 +27,41 @@ func NewEmailService() *EmailService {
 
 func (s *EmailService) IsConfigured() bool {
 	return s.smtpUsername != "" && s.smtpPassword != ""
+}
+
+func (s *EmailService) SendPasswordReset(toEmail, userName, resetURL string) error {
+	if !s.IsConfigured() {
+		if getEnv("APP_ENV", "development") != "production" {
+			fmt.Printf("Password reset link for %s: %s\n", toEmail, resetURL)
+		}
+		return nil
+	}
+
+	subject := "Reset your CinemaBook password"
+	body := fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #e50019;">Reset your password</h1>
+        <p>Hello %s,</p>
+        <p>We received a request to reset your CinemaBook password. This link expires in 30 minutes and can only be used once.</p>
+        <p><a href="%s" style="display: inline-block; background: #e50019; color: white; padding: 12px 20px; text-decoration: none; border-radius: 6px;">Reset password</a></p>
+        <p>If you did not request this, you can safely ignore this email.</p>
+        <p style="color: #666; font-size: 12px;">This is an automated email. Please do not reply.</p>
+    </div>
+</body>
+</html>`, html.EscapeString(userName), html.EscapeString(resetURL))
+
+	msg := []byte(fmt.Sprintf("To: %s\r\n"+
+		"Subject: %s\r\n"+
+		"Content-Type: text/html; charset=UTF-8\r\n"+
+		"\r\n"+
+		"%s", toEmail, subject, body))
+
+	addr := fmt.Sprintf("%s:%s", s.smtpHost, s.smtpPort)
+	auth := smtp.PlainAuth("", s.smtpUsername, s.smtpPassword, s.smtpHost)
+	return smtp.SendMail(addr, auth, s.fromEmail, []string{toEmail}, msg)
 }
 
 // SendTicketConfirmation gửi email xác nhận vé

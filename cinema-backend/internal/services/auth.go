@@ -3,7 +3,14 @@ package services
 import (
 	"cinema-backend/internal/models"
 	"cinema-backend/internal/repository"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
+	"log"
+	"net/url"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,16 +19,22 @@ import (
 )
 
 type AuthService struct {
-	userRepo  *repository.UserRepository
-	jwtSecret string
+	userRepo     *repository.UserRepository
+	jwtSecret    string
+	emailService *EmailService
+	frontendURL  string
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, jwtSecret string, emailService *EmailService, frontendURL string) *AuthService {
 	return &AuthService{
-		userRepo:  userRepo,
-		jwtSecret: jwtSecret,
+		userRepo:     userRepo,
+		jwtSecret:    jwtSecret,
+		emailService: emailService,
+		frontendURL:  frontendURL,
 	}
 }
+
+const passwordResetTokenTTL = 30 * time.Minute
 
 type Claims struct {
 	UserID uuid.UUID `json:"userId"`
@@ -86,6 +99,81 @@ func (s *AuthService) Login(email, password string) (*models.User, string, error
 	}
 
 	return user, token, nil
+}
+
+func (s *AuthService) RequestPasswordReset(email string) (string, error) {
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	user, err := s.userRepo.FindByEmail(normalizedEmail)
+	if err != nil {
+		// Do not reveal whether an account exists.
+		return "", nil
+	}
+
+	rawToken := make([]byte, 32)
+	if _, err := rand.Read(rawToken); err != nil {
+		return "", err
+	}
+	resetToken := url.QueryEscape(encodeResetToken(rawToken))
+	if err := s.userRepo.DeletePasswordResetTokens(user.ID); err != nil {
+		return "", err
+	}
+
+	if err := s.userRepo.CreatePasswordResetToken(&models.PasswordResetToken{
+		UserID:    user.ID,
+		TokenHash: hashResetToken(resetToken),
+		ExpiresAt: time.Now().Add(passwordResetTokenTTL),
+	}); err != nil {
+		return "", err
+	}
+
+	resetURL := fmt.Sprintf("%s/auth/reset-password?token=%s", strings.TrimRight(s.frontendURL, "/"), resetToken)
+	if s.emailService == nil {
+		log.Printf("Password reset email service is unavailable for %s", normalizedEmail)
+		return resetURL, nil
+	}
+	if err := s.emailService.SendPasswordReset(user.Email, user.Name, resetURL); err != nil {
+		log.Printf("Failed to send password reset email: %v", err)
+	}
+
+	if !s.emailService.IsConfigured() && getEnv("APP_ENV", "development") != "production" {
+		return resetURL, nil
+	}
+
+	return "", nil
+}
+
+func (s *AuthService) ResetPassword(token, newPassword string) error {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return errors.New("invalid or expired reset token")
+	}
+
+	resetToken, err := s.userRepo.ConsumePasswordResetToken(hashResetToken(token))
+	if err != nil {
+		return errors.New("invalid or expired reset token")
+	}
+
+	user, err := s.userRepo.FindByID(resetToken.UserID)
+	if err != nil {
+		return errors.New("invalid or expired reset token")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(hashedPassword)
+	return s.userRepo.Update(user)
+}
+
+func encodeResetToken(token []byte) string {
+	return hex.EncodeToString(token)
+}
+
+func hashResetToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(hash[:])
 }
 
 func (s *AuthService) generateToken(user *models.User) (string, error) {

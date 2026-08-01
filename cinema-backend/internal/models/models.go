@@ -31,6 +31,17 @@ type User struct {
 	Bookings []Booking `json:"bookings,omitempty" gorm:"foreignKey:UserID"`
 }
 
+type PasswordResetToken struct {
+	ID        uuid.UUID  `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	UserID    uuid.UUID  `json:"userId" gorm:"type:uuid;not null;index"`
+	TokenHash string     `json:"-" gorm:"uniqueIndex;not null"`
+	ExpiresAt time.Time  `json:"-" gorm:"index;not null"`
+	UsedAt    *time.Time `json:"-"`
+	CreatedAt time.Time  `json:"createdAt"`
+
+	User User `json:"-" gorm:"foreignKey:UserID"`
+}
+
 type MovieGenre string
 
 const (
