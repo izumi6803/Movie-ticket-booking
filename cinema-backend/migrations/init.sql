@@ -5,14 +5,19 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) UNIQUE NOT NULL,
+    email VARCHAR(255) NOT NULL,
     password VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'customer',
     phone VARCHAR(50),
     avatar VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deleted_at TIMESTAMP NULL
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_active
+    ON users (LOWER(email))
+    WHERE deleted_at IS NULL;
 
 -- One-time password reset tokens. Only token hashes are stored.
 CREATE TABLE IF NOT EXISTS password_reset_tokens (

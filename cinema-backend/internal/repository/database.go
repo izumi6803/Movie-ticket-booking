@@ -25,7 +25,7 @@ func GetDB() *gorm.DB {
 
 func Migrate(databaseDB *gorm.DB) error {
 	db = databaseDB
-	return db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&models.User{},
 		&models.PasswordResetToken{},
 		&models.Movie{},
@@ -41,5 +41,20 @@ func Migrate(databaseDB *gorm.DB) error {
 		&models.SeatLock{},
 		&models.Payment{},
 		&models.SystemSetting{},
-	)
+	); err != nil {
+		return err
+	}
+
+	// Keep email uniqueness for active users while allowing a deleted account to register again.
+	if err := db.Exec("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_email_key").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("DROP INDEX IF EXISTS idx_users_email").Error; err != nil {
+		return err
+	}
+	return db.Exec(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_active
+        ON users (LOWER(email))
+        WHERE deleted_at IS NULL
+    `).Error
 }
