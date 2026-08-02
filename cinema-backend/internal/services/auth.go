@@ -62,7 +62,7 @@ func (s *AuthService) Register(name, email, password, phone string) (*models.Use
 
 func (s *AuthService) CreateUser(name, email, password, phone string, role models.UserRole) (*models.User, error) {
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
-	if existingUser, _ := s.userRepo.FindByEmail(normalizedEmail); existingUser != nil {
+	if existingUser, _ := s.userRepo.FindByEmailIncludingDeleted(normalizedEmail); existingUser != nil {
 		return nil, ErrUserAlreadyExists
 	}
 
@@ -86,7 +86,7 @@ func (s *AuthService) CreateUser(name, email, password, phone string, role model
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
-		if existingUser, _ := s.userRepo.FindByEmail(normalizedEmail); existingUser != nil {
+		if existingUser, _ := s.userRepo.FindByEmailIncludingDeleted(normalizedEmail); existingUser != nil {
 			return nil, ErrUserAlreadyExists
 		}
 		return nil, err
@@ -245,7 +245,7 @@ func (s *AuthService) UpdateUser(userID uuid.UUID, name, email, phone string, ro
 
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
 	if normalizedEmail != user.Email {
-		otherUser, lookupErr := s.userRepo.FindByEmail(normalizedEmail)
+		otherUser, lookupErr := s.userRepo.FindByEmailIncludingDeleted(normalizedEmail)
 		if lookupErr == nil && otherUser.ID != userID {
 			return nil, errors.New("email is already in use")
 		}

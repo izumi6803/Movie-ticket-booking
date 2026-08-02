@@ -32,6 +32,16 @@ func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	return &user, nil
 }
 
+func (r *UserRepository) FindByEmailIncludingDeleted(email string) (*models.User, error) {
+	var user models.User
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	err := r.db.Unscoped().Where("LOWER(email) = ?", normalizedEmail).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (r *UserRepository) FindByID(id uuid.UUID) (*models.User, error) {
 	var user models.User
 	err := r.db.First(&user, "id = ?", id).Error
