@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"cinema-backend/internal/models"
 	"cinema-backend/internal/services"
 	"log"
 	"net/http"
@@ -44,6 +45,22 @@ type ForgotPasswordRequest struct {
 type ResetPasswordRequest struct {
 	Token       string `json:"token" binding:"required"`
 	NewPassword string `json:"newPassword" binding:"required,min=6"`
+}
+
+type AdminCreateUserRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required,min=6"`
+	Phone    string `json:"phone"`
+	Role     string `json:"role" binding:"required"`
+}
+
+type AdminUpdateUserRequest struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password"`
+	Phone    string `json:"phone"`
+	Role     string `json:"role" binding:"required"`
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
@@ -198,6 +215,61 @@ func (h *AuthHandler) GetUserByID(c *gin.Context) {
 	user, err := h.authService.GetUserByID(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "user not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": user})
+}
+
+func (h *AuthHandler) CreateUser(c *gin.Context) {
+	var req AdminCreateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	user, err := h.authService.CreateUser(
+		req.Name,
+		req.Email,
+		req.Password,
+		req.Phone,
+		models.UserRole(req.Role),
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"success": true, "data": user})
+}
+
+func (h *AuthHandler) UpdateUser(c *gin.Context) {
+	userID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "invalid user id"})
+		return
+	}
+
+	var req AdminUpdateUserRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+	if req.Password != "" && len(req.Password) < 6 {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": "password must be at least 6 characters"})
+		return
+	}
+
+	user, err := h.authService.UpdateUser(
+		userID,
+		req.Name,
+		req.Email,
+		req.Phone,
+		models.UserRole(req.Role),
+		req.Password,
+	)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
 		return
 	}
 

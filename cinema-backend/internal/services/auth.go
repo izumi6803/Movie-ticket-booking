@@ -44,31 +44,8 @@ type Claims struct {
 }
 
 func (s *AuthService) Register(name, email, password, phone string) (*models.User, string, error) {
-	// Check if user exists
-	existingUser, _ := s.userRepo.FindByEmail(email)
-	if existingUser != nil {
-		return nil, "", errors.New("user already exists")
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user, err := s.CreateUser(name, email, password, phone, models.RoleCustomer)
 	if err != nil {
-		return nil, "", err
-	}
-
-	// Create user
-	user := &models.User{
-		Name:     name,
-		Email:    email,
-		Password: string(hashedPassword),
-		Role:     models.RoleCustomer,
-	}
-
-	if phone != "" {
-		user.Phone = &phone
-	}
-
-	if err := s.userRepo.Create(user); err != nil {
 		return nil, "", err
 	}
 
@@ -79,6 +56,38 @@ func (s *AuthService) Register(name, email, password, phone string) (*models.Use
 	}
 
 	return user, token, nil
+}
+
+func (s *AuthService) CreateUser(name, email, password, phone string, role models.UserRole) (*models.User, error) {
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	if existingUser, _ := s.userRepo.FindByEmail(normalizedEmail); existingUser != nil {
+		return nil, errors.New("user already exists")
+	}
+
+	if role != models.RoleAdmin && role != models.RoleCustomer {
+		return nil, errors.New("invalid user role")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &models.User{
+		Name:     strings.TrimSpace(name),
+		Email:    normalizedEmail,
+		Password: string(hashedPassword),
+		Role:     role,
+	}
+	if phone != "" {
+		user.Phone = &phone
+	}
+
+	if err := s.userRepo.Create(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
 }
 
 func (s *AuthService) Login(email, password string) (*models.User, string, error) {
@@ -221,6 +230,45 @@ func (s *AuthService) GetCustomers(page, limit int) ([]models.User, int64, error
 
 func (s *AuthService) DeleteUser(userID uuid.UUID) error {
 	return s.userRepo.Delete(userID)
+}
+
+func (s *AuthService) UpdateUser(userID uuid.UUID, name, email, phone string, role models.UserRole, password string) (*models.User, error) {
+	user, err := s.userRepo.FindByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	if normalizedEmail != user.Email {
+		otherUser, lookupErr := s.userRepo.FindByEmail(normalizedEmail)
+		if lookupErr == nil && otherUser.ID != userID {
+			return nil, errors.New("email is already in use")
+		}
+	}
+	if role != models.RoleAdmin && role != models.RoleCustomer {
+		return nil, errors.New("invalid user role")
+	}
+
+	user.Name = strings.TrimSpace(name)
+	user.Email = normalizedEmail
+	user.Role = role
+	if phone == "" {
+		user.Phone = nil
+	} else {
+		user.Phone = &phone
+	}
+	if password != "" {
+		hashedPassword, hashErr := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if hashErr != nil {
+			return nil, hashErr
+		}
+		user.Password = string(hashedPassword)
+	}
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 func (s *AuthService) UpdateProfile(userID uuid.UUID, name, phone string) (*models.User, error) {

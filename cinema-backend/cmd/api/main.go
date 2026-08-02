@@ -249,9 +249,11 @@ func main() {
 
 			// Users
 			admin.GET("/users", authHandler.GetAllUsers)
+			admin.POST("/users", authHandler.CreateUser)
 			admin.GET("/users/customers", authHandler.GetCustomers)
 			admin.GET("/users/:id", authHandler.GetUserByID)
 			admin.GET("/users/:id/bookings", bookingHandler.GetMyBookings)
+			admin.PUT("/users/:id", authHandler.UpdateUser)
 			admin.DELETE("/users/:id", authHandler.DeleteUser)
 
 			// Settings
