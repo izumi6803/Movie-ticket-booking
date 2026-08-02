@@ -36,7 +36,7 @@ func NewAuthService(userRepo *repository.UserRepository, jwtSecret string, email
 
 const passwordResetTokenTTL = 30 * time.Minute
 
-var ErrUserAlreadyExists = errors.New("an account with this email already exists. Sign in or reset your password")
+var ErrUserAlreadyExists = errors.New("An account with this email already exists. Sign in or reset your password.")
 
 type Claims struct {
 	UserID uuid.UUID `json:"userId"`
