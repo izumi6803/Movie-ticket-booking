@@ -3,6 +3,7 @@ package repository
 import (
 	"cinema-backend/internal/models"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,7 +24,8 @@ func (r *UserRepository) Create(user *models.User) error {
 
 func (r *UserRepository) FindByEmail(email string) (*models.User, error) {
 	var user models.User
-	err := r.db.Where("email = ?", email).First(&user).Error
+	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
+	err := r.db.Where("LOWER(email) = ?", normalizedEmail).First(&user).Error
 	if err != nil {
 		return nil, err
 	}

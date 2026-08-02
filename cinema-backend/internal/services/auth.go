@@ -36,6 +36,8 @@ func NewAuthService(userRepo *repository.UserRepository, jwtSecret string, email
 
 const passwordResetTokenTTL = 30 * time.Minute
 
+var ErrUserAlreadyExists = errors.New("an account with this email already exists. Sign in or reset your password")
+
 type Claims struct {
 	UserID uuid.UUID `json:"userId"`
 	Email  string    `json:"email"`
@@ -61,7 +63,7 @@ func (s *AuthService) Register(name, email, password, phone string) (*models.Use
 func (s *AuthService) CreateUser(name, email, password, phone string, role models.UserRole) (*models.User, error) {
 	normalizedEmail := strings.ToLower(strings.TrimSpace(email))
 	if existingUser, _ := s.userRepo.FindByEmail(normalizedEmail); existingUser != nil {
-		return nil, errors.New("user already exists")
+		return nil, ErrUserAlreadyExists
 	}
 
 	if role != models.RoleAdmin && role != models.RoleCustomer {
@@ -84,6 +86,9 @@ func (s *AuthService) CreateUser(name, email, password, phone string, role model
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
+		if existingUser, _ := s.userRepo.FindByEmail(normalizedEmail); existingUser != nil {
+			return nil, ErrUserAlreadyExists
+		}
 		return nil, err
 	}
 

@@ -3,6 +3,7 @@ package handlers
 import (
 	"cinema-backend/internal/models"
 	"cinema-backend/internal/services"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -72,6 +73,10 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	user, token, err := h.authService.Register(req.Name, req.Email, req.Password, req.Phone)
 	if err != nil {
+		if errors.Is(err, services.ErrUserAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"success": false, "message": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
 		return
 	}
@@ -236,6 +241,10 @@ func (h *AuthHandler) CreateUser(c *gin.Context) {
 		models.UserRole(req.Role),
 	)
 	if err != nil {
+		if errors.Is(err, services.ErrUserAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"success": false, "message": err.Error()})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"success": false, "message": err.Error()})
 		return
 	}
