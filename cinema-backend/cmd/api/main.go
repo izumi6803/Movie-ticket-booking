@@ -283,6 +283,7 @@ func main() {
 
 			// Bookings
 			customer.GET("/my-bookings", bookingHandler.GetMyBookings)
+			customer.GET("/my-bookings/:id", bookingHandler.GetMyBookingByID)
 			customer.POST("/bookings/create", bookingHandler.Create)
 			customer.DELETE("/my-bookings/clear", bookingHandler.ClearMyBookings)
 

@@ -166,6 +166,26 @@ func (h *BookingHandler) GetByID(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"success": true, "data": booking})
 }
 
+func (h *BookingHandler) GetMyBookingByID(c *gin.Context) {
+	id := c.Param("id")
+	booking, err := h.service.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "booking not found"})
+		return
+	}
+
+	role, _ := c.Get("userRole")
+	userID, _ := c.Get("userID")
+	currentUserID, hasUserID := userID.(uuid.UUID)
+	if role != "admin" && (!hasUserID || booking.UserID != currentUserID) {
+		// Return not found to avoid exposing whether another user's booking exists.
+		c.JSON(http.StatusNotFound, gin.H{"success": false, "message": "booking not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "data": booking})
+}
+
 func (h *BookingHandler) Confirm(c *gin.Context) {
 	id := c.Param("id")
 
