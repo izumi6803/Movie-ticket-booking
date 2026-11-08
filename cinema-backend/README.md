@@ -90,3 +90,7 @@ PostgreSQL with tables:
 - showtimes
 - tickets
 - bookings
+
+## Concurrency note
+
+Seat availability is enforced with application-level `seat_locks` (cooldown, hourly cap, expiry) plus a pre-insert availability check. That check-then-insert path is not race-proof: two simultaneous checkouts for the same seat can both pass. For production, add a database-level guarantee - a `booked_seats(showtime_id, seat_id)` unique index (or `SELECT ... FOR UPDATE` inside a transaction) - so the second insert fails and the API can return a conflict.
